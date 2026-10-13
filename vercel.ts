@@ -69,7 +69,9 @@ export const config = {
       has: [
         {
           type: 'host',
-          value: `(?i)(?<tenantHost>(?!(?:www|app|api|admin)\\.)(?!${appHostAndPlatformHosts}(?::[0-9]+)?$)[a-z0-9-]+(?:\\.[a-z0-9-]+)+\\.[a-z]{2,})`,
+          value: {
+            re: `(?i)(?<tenantHost>(?!(?:www|app|api|admin)\\.)(?!${appHostAndPlatformHosts}(?::[0-9]+)?$)[a-z0-9-]+(?:\\.[a-z0-9-]+)+\\.[a-z]{2,})`,
+          },
         },
       ],
       destination: '/api/public-site?host=:tenantHost&path=/$1',
@@ -79,7 +81,9 @@ export const config = {
       has: [
         {
           type: 'host',
-          value: `(?i)(?<tenantHost>(?!${appDomainAndPlatformHosts}(?::[0-9]+)?$)[^/:]+)(?::[0-9]+)?`,
+          value: {
+            re: `(?i)(?<tenantHost>(?!${appDomainAndPlatformHosts}(?::[0-9]+)?$)[^/:]+)(?::[0-9]+)?`,
+          },
         },
       ],
       destination: '/api/public-site?host=:tenantHost&path=/$1',
