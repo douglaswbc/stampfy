@@ -27,6 +27,14 @@ for (const name of serverEnvNames) {
   }
 }
 
+// Local Vercel development routes localhost and does not need the production
+// hostname. Keep the deploy config strict while making `npm run dev:vercel`
+// work without requiring a local app URL in every developer's env file.
+if (!process.env.VITE_APP_URL?.trim() && !process.env.APP_ORIGIN?.trim()) {
+  process.env.VITE_APP_URL = 'http://localhost:3000';
+  process.env.APP_ORIGIN = 'http://localhost:3000';
+}
+
 const isWindows = process.platform === 'win32';
 const child = spawn(isWindows ? 'npx.cmd' : 'npx', ['vercel', 'dev'], {
   env: process.env,
