@@ -141,7 +141,7 @@ const SiteImageField: React.FC<{
     <div className="space-y-1.5">
       <Label htmlFor={inputId}>{label}</Label>
       <div className="flex flex-col gap-2 sm:flex-row">
-        <Input id={inputId} type="url" value={value} onChange={(event) => onChange(event.target.value)} placeholder="https://..." />
+        <Input id={inputId} type="url" value={value} onChange={(event) => onChange(event.target.value)} placeholder="https://..." className="min-w-0" />
         <input
           ref={fileInput}
           type="file"
