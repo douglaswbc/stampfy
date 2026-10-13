@@ -4,6 +4,7 @@ import { useLocale } from './LocaleProvider';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
+import { supabase } from '../supabase';
 import {
   getCompanyEngagementConfiguration,
   saveCompanyEngagementConfiguration,
@@ -13,6 +14,7 @@ import {
 } from '../lib/db/customerEngagement';
 
 type Configuration = Awaited<ReturnType<typeof getCompanyEngagementConfiguration>>;
+type ManualCampaignRecipient = { customer_id: string; customer_name: string; can_push: boolean; can_whatsapp: boolean };
 
 const DEFAULT_SETTINGS: Omit<CompanyEngagementSettings, 'timeZone'> = {
   enabled: false,
@@ -75,6 +77,13 @@ export const EngagementRemindersSettings: React.FC = () => {
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState('');
   const [notice, setNotice] = React.useState('');
+  const [recipients, setRecipients] = React.useState<ManualCampaignRecipient[]>([]);
+  const [testCustomerId, setTestCustomerId] = React.useState('');
+  const [testChannel, setTestChannel] = React.useState<'push' | 'whatsapp' | 'both'>('push');
+  const [campaignChannel, setCampaignChannel] = React.useState<'push' | 'whatsapp' | 'both'>('push');
+  const [campaignTitle, setCampaignTitle] = React.useState('');
+  const [campaignBody, setCampaignBody] = React.useState('');
+  const [sendBusy, setSendBusy] = React.useState('');
 
   const refresh = React.useCallback(async () => {
     setLoading(true);
@@ -90,6 +99,10 @@ export const EngagementRemindersSettings: React.FC = () => {
     setSettings({ ...DEFAULT_SETTINGS, ...savedSettings } as typeof DEFAULT_SETTINGS);
     setSelectedCampaigns(result.campaignIds ?? []);
     setTemplates(REMINDER_TYPES.map(({ id }) => result.pushTemplates?.find(template => template.eventType === id) ?? DEFAULT_TEMPLATES.find(template => template.eventType === id)!));
+    const { data: recipientRows } = await supabase.rpc('get_manual_campaign_recipients');
+    const eligible = Array.isArray(recipientRows) ? recipientRows as ManualCampaignRecipient[] : [];
+    setRecipients(eligible);
+    setTestCustomerId(current => eligible.some(recipient => recipient.customer_id === current) ? current : eligible[0]?.customer_id ?? '');
   }, [t]);
 
   React.useEffect(() => { void refresh(); }, [refresh]);
@@ -117,10 +130,39 @@ export const EngagementRemindersSettings: React.FC = () => {
     setTemplates(current => current.map(template => template.eventType === eventType ? { ...template, [key]: value } : template));
   };
 
+  const sendManual = async (test: boolean) => {
+    if (test && !testCustomerId) return;
+    if (!test && !window.confirm(t('Send this campaign to all eligible customers who consented to the selected channel?'))) return;
+    setSendBusy(test ? 'test' : 'campaign');
+    setError('');
+    setNotice('');
+    const { data, error: sendError } = await supabase.rpc('queue_manual_customer_campaign', {
+      channel_input: test ? testChannel : campaignChannel,
+      title_input: campaignTitle.trim(),
+      body_input: campaignBody.trim(),
+      test_customer_id_input: test ? testCustomerId : null,
+    });
+    setSendBusy('');
+    if (sendError || !data || typeof data !== 'object') {
+      setError(sendError?.message || t('Could not queue the campaign. Check the WhatsApp template and recipient consent.'));
+      return;
+    }
+    const queued = Number((data as { queued?: number }).queued || 0);
+    setNotice(test
+      ? t(queued ? 'Test notification queued.' : 'The selected customer is not eligible for this channel.')
+      : t(queued ? 'Campaign messages queued.' : 'No customers are eligible for the selected channel.'));
+    const { data: recipientRows } = await supabase.rpc('get_manual_campaign_recipients');
+    setRecipients(Array.isArray(recipientRows) ? recipientRows as ManualCampaignRecipient[] : []);
+  };
+
   if (loading) return <div className="flex items-center justify-center rounded-2xl border bg-white py-16 text-muted-foreground"><LoaderCircle className="h-6 w-6 animate-spin" /></div>;
 
   const campaigns = configuration?.campaigns ?? [];
   const activity = configuration?.activity;
+  const chosenTestRecipient = recipients.find(recipient => recipient.customer_id === testCustomerId);
+  const testChannelAvailable = testChannel === 'push' ? chosenTestRecipient?.can_push
+    : testChannel === 'whatsapp' ? chosenTestRecipient?.can_whatsapp
+      : chosenTestRecipient?.can_push && chosenTestRecipient?.can_whatsapp;
 
   return (
     <form onSubmit={save} className="space-y-5">
@@ -235,6 +277,63 @@ export const EngagementRemindersSettings: React.FC = () => {
               </article>
             );
           })}
+        </div>
+      </section>
+
+      <section className="rounded-2xl border bg-white p-4 shadow-xs sm:p-6">
+        <h3 className="font-semibold">{t('Manual campaigns and channel tests')}</h3>
+        <p className="mt-1 text-sm leading-6 text-muted-foreground">{t('Tests go to one selected customer. Campaigns go to every active customer who consented and has a working destination. WhatsApp sends use the approved Manual campaign template configured in Communications.')}</p>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-1.5">
+            <Label htmlFor="manual-campaign-title">{t('Browser push title')}</Label>
+            <Input id="manual-campaign-title" maxLength={70} value={campaignTitle} onChange={event => setCampaignTitle(event.target.value)} />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="manual-campaign-body">{t('Browser push message')}</Label>
+            <textarea id="manual-campaign-body" maxLength={220} rows={2} value={campaignBody} onChange={event => setCampaignBody(event.target.value)} className="w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm" />
+          </div>
+        </div>
+        <p className="mt-2 text-xs text-muted-foreground">{t('WhatsApp campaign copy comes from its approved template. Supported variables are customer_name and business_name.')}</p>
+        <div className="mt-5 grid gap-4 rounded-xl border p-3.5 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
+          <div className="grid gap-1.5">
+            <Label htmlFor="manual-test-customer">{t('Test recipient')}</Label>
+            <select id="manual-test-customer" value={testCustomerId} onChange={event => {
+              const nextCustomer = recipients.find(recipient => recipient.customer_id === event.target.value);
+              setTestCustomerId(event.target.value);
+              if (testChannel === 'both' && (!nextCustomer?.can_push || !nextCustomer?.can_whatsapp)) {
+                setTestChannel(nextCustomer?.can_push ? 'push' : 'whatsapp');
+              } else if (testChannel === 'push' && !nextCustomer?.can_push && nextCustomer?.can_whatsapp) setTestChannel('whatsapp');
+              else if (testChannel === 'whatsapp' && !nextCustomer?.can_whatsapp && nextCustomer?.can_push) setTestChannel('push');
+            }} className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm">
+              <option value="">{t('Choose a customer')}</option>
+              {recipients.map(recipient => <option key={recipient.customer_id} value={recipient.customer_id}>{recipient.customer_name}</option>)}
+            </select>
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="manual-test-channel">{t('Test channel')}</Label>
+            <select id="manual-test-channel" value={testChannel} onChange={event => setTestChannel(event.target.value as typeof testChannel)} className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm">
+              <option value="push" disabled={!chosenTestRecipient?.can_push}>{t('Browser push')}</option>
+              <option value="whatsapp" disabled={!chosenTestRecipient?.can_whatsapp}>{t('WhatsApp')}</option>
+              <option value="both" disabled={!chosenTestRecipient?.can_push || !chosenTestRecipient?.can_whatsapp}>{t('Both channels')}</option>
+            </select>
+          </div>
+          <Button type="button" variant="outline" onClick={() => void sendManual(true)} disabled={!testCustomerId || !testChannelAvailable || sendBusy !== '' || (testChannel !== 'whatsapp' && (!campaignTitle.trim() || !campaignBody.trim()))}>
+            {sendBusy === 'test' ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : null}{t('Send test')}
+          </Button>
+        </div>
+        <div className="mt-4 grid gap-4 rounded-xl border p-3.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+          <div className="grid gap-1.5">
+            <Label htmlFor="manual-campaign-channel">{t('Campaign channels')}</Label>
+            <select id="manual-campaign-channel" value={campaignChannel} onChange={event => setCampaignChannel(event.target.value as typeof campaignChannel)} className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm">
+              <option value="push">{t('Browser push')}</option>
+              <option value="whatsapp">{t('WhatsApp')}</option>
+              <option value="both">{t('Both channels')}</option>
+            </select>
+            <p className="text-xs text-muted-foreground">{t('Eligible customers')}: {campaignChannel === 'push' ? recipients.filter(recipient => recipient.can_push).length : campaignChannel === 'whatsapp' ? recipients.filter(recipient => recipient.can_whatsapp).length : recipients.filter(recipient => recipient.can_push || recipient.can_whatsapp).length}</p>
+          </div>
+          <Button type="button" onClick={() => void sendManual(false)} disabled={sendBusy !== '' || recipients.length === 0 || (campaignChannel !== 'whatsapp' && (!campaignTitle.trim() || !campaignBody.trim()))}>
+            {sendBusy === 'campaign' ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : null}{t('Send campaign')}
+          </Button>
         </div>
       </section>
 

@@ -253,9 +253,10 @@ const getProviderKey = async (integration: IntegrationRow) => {
 
 const eventTypes = new Set([
   'visit_validated', 'mission_completed', 'reward_claimed',
-  'return_reminder', 'mission_reminder', 'reward_expiring',
+  'return_reminder', 'mission_reminder', 'reward_expiring', 'manual_campaign',
 ]);
 const eventVariableSamples: Record<string, Record<string, string>> = {
+  manual_campaign: { customer_name: 'Ana', business_name: 'CafÃ© Central' },
   visit_validated: {
     customer_name: 'Ana', business_name: 'Café Central', campaign_name: 'Cartão de café',
     stamps: '4', total_stamps: '10', stamps_remaining: '6', visit_date: '08/10/2026',

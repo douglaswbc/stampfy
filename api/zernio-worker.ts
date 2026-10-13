@@ -95,6 +95,7 @@ const templateComponents = (value: unknown) => {
 };
 
 const eventVariableKeys: Record<string, Set<string>> = {
+  manual_campaign: new Set(['customer_name', 'business_name']),
   visit_validated: new Set(['customer_name', 'business_name', 'campaign_name', 'stamps', 'total_stamps', 'stamps_remaining', 'visit_date']),
   mission_completed: new Set(['customer_name', 'business_name', 'mission_name', 'mission_reward', 'completion_number']),
   reward_claimed: new Set(['customer_name', 'business_name', 'reward_name', 'redemption_code', 'reward_expires_at']),
@@ -191,6 +192,13 @@ const loadEventVariables = async (
     ) : null;
     if (!campaign) return null;
     values.campaign_name = campaign.name || '';
+  } else if (notification.event_type === 'manual_campaign') {
+    if (requiredKeys.includes('business_name')) {
+      const profile = await readFirst<{ business_name: string }>(
+        'profiles?id=eq.' + encodeURIComponent(notification.owner_id) + '&select=business_name',
+      );
+      values.business_name = profile?.business_name || '';
+    }
   } else if (notification.event_type === 'mission_reminder') {
     const missionId = reminderContext?.reminder_subject_id || '';
     const mission = await readFirst<{ name: string; campaign_id: string; goal_count: number; starts_at: string; mission_type: 'visit_count' | 'card_stamps' }>(

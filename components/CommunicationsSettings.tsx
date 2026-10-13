@@ -13,7 +13,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 
-type EventType = 'visit_validated' | 'mission_completed' | 'reward_claimed' | 'return_reminder' | 'mission_reminder' | 'reward_expiring';
+type EventType = 'visit_validated' | 'mission_completed' | 'reward_claimed' | 'return_reminder' | 'mission_reminder' | 'reward_expiring' | 'manual_campaign';
 type CommunicationChannel = 'whatsapp' | 'instagram';
 type TemplateButtonType = 'QUICK_REPLY' | 'URL' | 'PHONE_NUMBER';
 type TemplateButtonDraft = { type: TemplateButtonType; text: string; url?: string; phone_number?: string };
@@ -25,8 +25,12 @@ const EVENTS: { id: EventType; label: string; description: string }[] = [
   { id: 'return_reminder', label: 'Customer return reminder', description: 'When a participating customer has been inactive.' },
   { id: 'mission_reminder', label: 'Mission progress reminder', description: 'When an active mission has progress but no recent activity.' },
   { id: 'reward_expiring', label: 'Reward expiration reminder', description: 'Before an issued reward expires.' },
+  { id: 'manual_campaign', label: 'Manual campaign', description: 'For campaigns you start manually from Reminders settings.' },
 ];
 const EVENT_VARIABLES: Record<EventType, TemplateEventVariable[]> = {
+  manual_campaign: [
+    { key: 'customer_name', sample: 'Ana' }, { key: 'business_name', sample: 'CafÃ© Central' },
+  ],
   visit_validated: [
     { key: 'customer_name', sample: 'Ana' }, { key: 'business_name', sample: 'Café Central' },
     { key: 'campaign_name', sample: 'Cartão de café' }, { key: 'stamps', sample: '4' },
@@ -161,6 +165,7 @@ export const CommunicationsSettings: React.FC = () => {
     return_reminder: '',
     mission_reminder: '',
     reward_expiring: '',
+    manual_campaign: '',
   });
   const [enabled, setEnabled] = React.useState<Record<EventType, boolean>>({
     visit_validated: false,
@@ -169,6 +174,7 @@ export const CommunicationsSettings: React.FC = () => {
     return_reminder: false,
     mission_reminder: false,
     reward_expiring: false,
+    manual_campaign: false,
   });
   const [busy, setBusy] = React.useState('');
   const [channelBusy, setChannelBusy] = React.useState<Record<CommunicationChannel, '' | 'connect' | 'disconnect'>>({
@@ -755,7 +761,7 @@ export const CommunicationsSettings: React.FC = () => {
                     disabled={!selectedTemplate || selectedTemplate.status !== 'APPROVED' || !templateSupportsEvent(selectedTemplate, event.id)}
                     className="mt-1 h-4 w-4 accent-foreground"
                   />
-                  <span>{t('Enable automatic message for this event (requires an approved template with supported variables).')}</span>
+                  <span>{t(event.id === 'manual_campaign' ? 'Enable this approved template for manually sent campaigns.' : 'Enable automatic message for this event (requires an approved template with supported variables).')}</span>
                 </label>
               </div>
             );

@@ -7407,7 +7407,7 @@ alter table public.company_notification_templates
   add constraint company_notification_templates_event_type_check
   check (event_type in (
     'visit_validated', 'mission_completed', 'reward_claimed',
-    'return_reminder', 'mission_reminder', 'reward_expiring'
+    'return_reminder', 'mission_reminder', 'reward_expiring', 'manual_campaign'
   ));
 
 alter table public.communication_notification_outbox
@@ -7416,7 +7416,7 @@ alter table public.communication_notification_outbox
   add constraint communication_notification_outbox_event_type_check
   check (event_type in (
     'visit_validated', 'mission_completed', 'reward_claimed',
-    'return_reminder', 'mission_reminder', 'reward_expiring'
+    'return_reminder', 'mission_reminder', 'reward_expiring', 'manual_campaign'
   ));
 alter table public.communication_notification_outbox
   add column if not exists engagement_channel text,
@@ -8482,7 +8482,7 @@ begin
         and template.enabled and template.template_status = 'APPROVED'
       where pref.owner_id = o.owner_id and pref.customer_id = o.customer_id
         and pref.channel = 'whatsapp'
-        and pref.category = case when o.event_type in ('return_reminder', 'mission_reminder', 'reward_expiring') then 'marketing' else 'loyalty_updates' end
+        and pref.category = case when o.event_type in ('return_reminder', 'mission_reminder', 'reward_expiring', 'manual_campaign') then 'marketing' else 'loyalty_updates' end
         and pref.enabled and pref.revoked_at is null
     );
 
@@ -8506,7 +8506,7 @@ begin
       select 1 from public.customer_portal_communication_preferences pref
       where pref.owner_id = o.owner_id and pref.customer_id = o.customer_id
         and pref.channel = 'whatsapp'
-        and pref.category = case when o.event_type in ('return_reminder', 'mission_reminder', 'reward_expiring') then 'marketing' else 'loyalty_updates' end
+        and pref.category = case when o.event_type in ('return_reminder', 'mission_reminder', 'reward_expiring', 'manual_campaign') then 'marketing' else 'loyalty_updates' end
         and pref.enabled and pref.revoked_at is null
     );
 
@@ -8521,7 +8521,7 @@ begin
     join public.customer_portal_communication_preferences pref
       on pref.owner_id = o.owner_id and pref.customer_id = o.customer_id
       and pref.channel = 'whatsapp'
-      and pref.category = case when o.event_type in ('return_reminder', 'mission_reminder', 'reward_expiring') then 'marketing' else 'loyalty_updates' end
+      and pref.category = case when o.event_type in ('return_reminder', 'mission_reminder', 'reward_expiring', 'manual_campaign') then 'marketing' else 'loyalty_updates' end
       and pref.enabled and pref.revoked_at is null
     join public.company_communication_integrations integration on integration.owner_id = o.owner_id
     join public.company_notification_templates template
@@ -8688,7 +8688,7 @@ as $$
     join public.customer_portal_communication_preferences pref
       on pref.owner_id = o.owner_id and pref.customer_id = o.customer_id
       and pref.channel = 'whatsapp'
-      and pref.category = case when o.event_type in ('return_reminder', 'mission_reminder', 'reward_expiring') then 'marketing' else 'loyalty_updates' end
+      and pref.category = case when o.event_type in ('return_reminder', 'mission_reminder', 'reward_expiring', 'manual_campaign') then 'marketing' else 'loyalty_updates' end
       and pref.enabled and pref.revoked_at is null
     join public.company_communication_integrations i
       on i.owner_id = o.owner_id and i.whatsapp_account_id = account_id_input and i.zernio_api_key_ciphertext is not null
@@ -8824,7 +8824,7 @@ begin
   set status = 'skipped', locked_at = null, last_error_code = 'outbox_channel_mismatch'
   from public.communication_notification_outbox o
   where o.id = d.outbox_id and d.status in ('pending', 'retry', 'processing')
-    and o.event_type in ('return_reminder', 'mission_reminder', 'reward_expiring')
+    and o.event_type in ('return_reminder', 'mission_reminder', 'reward_expiring', 'manual_campaign')
     and o.engagement_channel is distinct from 'push';
 
   update public.customer_push_notification_deliveries d
@@ -8838,7 +8838,7 @@ begin
       join public.customer_portal_communication_preferences pref
         on pref.owner_id = l.owner_id and pref.customer_id = l.customer_id
         and pref.channel = 'push'
-        and pref.category = case when o.event_type in ('return_reminder', 'mission_reminder', 'reward_expiring') then 'marketing' else 'loyalty_updates' end
+        and pref.category = case when o.event_type in ('return_reminder', 'mission_reminder', 'reward_expiring', 'manual_campaign') then 'marketing' else 'loyalty_updates' end
         and pref.enabled and pref.revoked_at is null
       where l.subscription_id = d.subscription_id and l.owner_id = d.owner_id
         and l.customer_id = d.customer_id and l.card_unique_id = d.card_unique_id and l.revoked_at is null
@@ -8854,7 +8854,7 @@ begin
         or (d.status = 'processing' and d.locked_at < now() - interval '10 minutes')
       )
       and d.attempt_count < 5
-      and (o.event_type not in ('return_reminder', 'mission_reminder', 'reward_expiring')
+      and (o.event_type not in ('return_reminder', 'mission_reminder', 'reward_expiring', 'manual_campaign')
         or o.engagement_channel = 'push')
       and exists (
         select 1
@@ -8863,7 +8863,7 @@ begin
         join public.customer_portal_communication_preferences pref
           on pref.owner_id = l.owner_id and pref.customer_id = l.customer_id
           and pref.channel = 'push'
-          and pref.category = case when o.event_type in ('return_reminder', 'mission_reminder', 'reward_expiring') then 'marketing' else 'loyalty_updates' end
+          and pref.category = case when o.event_type in ('return_reminder', 'mission_reminder', 'reward_expiring', 'manual_campaign') then 'marketing' else 'loyalty_updates' end
           and pref.enabled and pref.revoked_at is null
         where l.subscription_id = d.subscription_id and l.owner_id = d.owner_id
           and l.customer_id = d.customer_id and l.card_unique_id = d.card_unique_id and l.revoked_at is null
@@ -8908,10 +8908,10 @@ as $$
     join public.customer_portal_communication_preferences pref
       on pref.owner_id = d.owner_id and pref.customer_id = d.customer_id
       and pref.channel = 'push'
-      and pref.category = case when o.event_type in ('return_reminder', 'mission_reminder', 'reward_expiring') then 'marketing' else 'loyalty_updates' end
+      and pref.category = case when o.event_type in ('return_reminder', 'mission_reminder', 'reward_expiring', 'manual_campaign') then 'marketing' else 'loyalty_updates' end
       and pref.enabled and pref.revoked_at is null
     where d.id = delivery_id_input and d.status = 'processing'
-      and (o.event_type not in ('return_reminder', 'mission_reminder', 'reward_expiring')
+      and (o.event_type not in ('return_reminder', 'mission_reminder', 'reward_expiring', 'manual_campaign')
         or o.engagement_channel = 'push')
       and (o.event_type not in ('return_reminder', 'mission_reminder', 'reward_expiring')
         or public.customer_engagement_reminder_is_current(o.id))
@@ -8972,5 +8972,194 @@ as $$
 $$;
 revoke all on function public.get_public_business_site_by_host(text) from public;
 grant execute on function public.get_public_business_site_by_host(text) to anon, authenticated;
+
+-- Manually initiated, consent-aware customer campaigns and channel tests.
+create or replace function public.get_manual_campaign_recipients()
+returns table (customer_id text, customer_name text, can_push boolean, can_whatsapp boolean)
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select c.id, c.name,
+    exists (
+      select 1 from public.customer_portal_communication_preferences pref
+      join public.customer_push_subscription_links l on l.owner_id = pref.owner_id
+        and l.customer_id = pref.customer_id and l.revoked_at is null
+      join public.customer_push_subscriptions s on s.id = l.subscription_id and s.revoked_at is null
+        and (s.expiration_time is null or s.expiration_time > now())
+      join public.issued_cards ic on ic.unique_id = l.card_unique_id and ic.owner_id = l.owner_id
+        and ic.customer_id = l.customer_id and ic.status = 'Active'
+      where pref.owner_id = c.owner_id and pref.customer_id = c.id and pref.channel = 'push'
+        and pref.category = 'marketing' and pref.enabled and pref.revoked_at is null
+    ),
+    exists (
+      select 1 from public.customer_portal_communication_preferences pref
+      join public.company_communication_integrations i on i.owner_id = pref.owner_id
+        and i.whatsapp_account_id is not null and i.zernio_api_key_ciphertext is not null
+      join public.company_notification_templates t on t.owner_id = pref.owner_id
+        and t.event_type = 'manual_campaign' and t.account_id = i.whatsapp_account_id
+        and t.enabled and t.template_status = 'APPROVED'
+      where pref.owner_id = c.owner_id and pref.customer_id = c.id and pref.channel = 'whatsapp'
+        and pref.category = 'marketing' and pref.enabled and pref.revoked_at is null
+        and public.engagement_whatsapp_number_is_valid(c.mobile, i.phone_country_code)
+    )
+  from public.customers c
+  join public.profiles p on p.id = c.owner_id and p.id = auth.uid()
+    and p.role = 'owner' and p.access = 'active'
+  where c.status = 'Active'
+    and (exists (
+      select 1 from public.customer_portal_communication_preferences pref
+      join public.customer_push_subscription_links l on l.owner_id = pref.owner_id
+        and l.customer_id = pref.customer_id and l.revoked_at is null
+      join public.customer_push_subscriptions s on s.id = l.subscription_id and s.revoked_at is null
+        and (s.expiration_time is null or s.expiration_time > now())
+      join public.issued_cards ic on ic.unique_id = l.card_unique_id and ic.owner_id = l.owner_id
+        and ic.customer_id = l.customer_id and ic.status = 'Active'
+      where pref.owner_id = c.owner_id and pref.customer_id = c.id and pref.channel = 'push'
+        and pref.category = 'marketing' and pref.enabled and pref.revoked_at is null
+    ) or exists (
+      select 1 from public.customer_portal_communication_preferences pref
+      join public.company_communication_integrations i on i.owner_id = pref.owner_id
+        and i.whatsapp_account_id is not null and i.zernio_api_key_ciphertext is not null
+      join public.company_notification_templates t on t.owner_id = pref.owner_id
+        and t.event_type = 'manual_campaign' and t.account_id = i.whatsapp_account_id
+        and t.enabled and t.template_status = 'APPROVED'
+      where pref.owner_id = c.owner_id and pref.customer_id = c.id and pref.channel = 'whatsapp'
+        and pref.category = 'marketing' and pref.enabled and pref.revoked_at is null
+        and public.engagement_whatsapp_number_is_valid(c.mobile, i.phone_country_code)
+    ))
+  order by c.name;
+$$;
+revoke all on function public.get_manual_campaign_recipients() from public, anon;
+grant execute on function public.get_manual_campaign_recipients() to authenticated;
+
+create or replace function public.queue_manual_customer_campaign(
+  channel_input text,
+  title_input text,
+  body_input text,
+  test_customer_id_input text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  owner_id_value uuid := auth.uid();
+  campaign_key uuid := gen_random_uuid();
+  channel_value text;
+  channel_values text[];
+  recipient record;
+  queued_count integer := 0;
+  outbox_id_value uuid;
+begin
+  if owner_id_value is null or not exists (
+    select 1 from public.profiles p where p.id = owner_id_value and p.role = 'owner' and p.access = 'active'
+  ) then raise exception 'Active company owner required.'; end if;
+  if channel_input not in ('push', 'whatsapp', 'both') then raise exception 'Choose a supported channel.'; end if;
+  if channel_input in ('push', 'both') and (
+    length(trim(coalesce(title_input, ''))) not between 1 and 70
+    or length(trim(coalesce(body_input, ''))) not between 1 and 220
+  ) then
+    raise exception 'Enter a title of up to 70 characters and a message of up to 220 characters.';
+  end if;
+  if channel_input in ('whatsapp', 'both') and not exists (
+    select 1 from public.company_communication_integrations i
+    join public.company_notification_templates t on t.owner_id = i.owner_id
+      and t.event_type = 'manual_campaign' and t.account_id = i.whatsapp_account_id
+      and t.enabled and t.template_status = 'APPROVED'
+    where i.owner_id = owner_id_value and i.whatsapp_account_id is not null
+      and i.zernio_api_key_ciphertext is not null
+  ) then raise exception 'Configure an approved WhatsApp campaign template first.'; end if;
+
+  channel_values := case when channel_input = 'both' then array['push','whatsapp'] else array[channel_input] end;
+  foreach channel_value in array channel_values loop
+    for recipient in
+      select c.id as customer_id, ic.id as card_id, ic.unique_id as card_unique_id
+      from public.customers c
+      join public.profiles p on p.id = c.owner_id and p.id = owner_id_value
+        and p.role = 'owner' and p.access = 'active'
+      left join lateral (
+        select active_card.id, active_card.unique_id, active_card.created_at
+        from public.issued_cards active_card
+        where active_card.owner_id = c.owner_id and active_card.customer_id = c.id
+          and active_card.status = 'Active'
+          and (channel_value <> 'push' or exists (
+            select 1 from public.customer_push_subscription_links active_link
+            join public.customer_push_subscriptions active_subscription
+              on active_subscription.id = active_link.subscription_id and active_subscription.revoked_at is null
+              and (active_subscription.expiration_time is null or active_subscription.expiration_time > now())
+            where active_link.owner_id = active_card.owner_id and active_link.customer_id = active_card.customer_id
+              and active_link.card_unique_id = active_card.unique_id and active_link.revoked_at is null
+          ))
+        order by active_card.created_at desc
+        limit 1
+      ) ic on true
+      where c.owner_id = owner_id_value and c.status = 'Active'
+        and (test_customer_id_input is null or c.id = test_customer_id_input)
+        and (
+          (channel_value = 'push' and exists (
+            select 1 from public.customer_portal_communication_preferences pref
+            join public.customer_push_subscription_links l on l.owner_id = pref.owner_id
+              and l.customer_id = pref.customer_id and l.card_unique_id = ic.unique_id and l.revoked_at is null
+            join public.customer_push_subscriptions s on s.id = l.subscription_id and s.revoked_at is null
+              and (s.expiration_time is null or s.expiration_time > now())
+            where pref.owner_id = c.owner_id and pref.customer_id = c.id and pref.channel = 'push'
+              and pref.category = 'marketing' and pref.enabled and pref.revoked_at is null
+          ))
+          or (channel_value = 'whatsapp' and exists (
+            select 1 from public.customer_portal_communication_preferences pref
+            join public.company_communication_integrations i on i.owner_id = pref.owner_id
+              and i.whatsapp_account_id is not null and i.zernio_api_key_ciphertext is not null
+            join public.company_notification_templates t on t.owner_id = pref.owner_id
+              and t.event_type = 'manual_campaign' and t.account_id = i.whatsapp_account_id
+              and t.enabled and t.template_status = 'APPROVED'
+            where pref.owner_id = c.owner_id and pref.customer_id = c.id and pref.channel = 'whatsapp'
+              and pref.category = 'marketing' and pref.enabled and pref.revoked_at is null
+              and public.engagement_whatsapp_number_is_valid(c.mobile, i.phone_country_code)
+          ))
+        )
+      order by c.id, ic.created_at desc
+    loop
+      if exists (select 1 from public.communication_notification_outbox o
+        where o.owner_id = owner_id_value and o.event_key = 'manual_campaign:' || campaign_key::text || ':' || channel_value || ':' || recipient.customer_id) then
+        continue;
+      end if;
+      insert into public.communication_notification_outbox(
+        owner_id, customer_id, event_type, event_key, engagement_channel,
+        card_id, message_title, message_body
+      ) values (
+        owner_id_value, recipient.customer_id, 'manual_campaign',
+        'manual_campaign:' || campaign_key::text || ':' || channel_value || ':' || recipient.customer_id,
+        channel_value, recipient.card_id,
+        case when channel_value = 'push' then trim(title_input) else null end,
+        case when channel_value = 'push' then trim(body_input) else null end
+      ) returning id into outbox_id_value;
+
+      if channel_value = 'push' then
+        insert into public.customer_push_notification_deliveries(
+          outbox_id, subscription_id, owner_id, customer_id, card_unique_id, message_title, message_body
+        )
+        select outbox_id_value, l.subscription_id, owner_id_value, recipient.customer_id,
+          l.card_unique_id, left(trim(title_input),70), left(trim(body_input),220)
+        from public.customer_push_subscription_links l
+        join public.customer_push_subscriptions s on s.id = l.subscription_id and s.revoked_at is null
+          and (s.expiration_time is null or s.expiration_time > now())
+        join public.customer_portal_communication_preferences pref on pref.owner_id = l.owner_id
+          and pref.customer_id = l.customer_id and pref.channel = 'push' and pref.category = 'marketing'
+          and pref.enabled and pref.revoked_at is null
+        where l.owner_id = owner_id_value and l.customer_id = recipient.customer_id
+          and l.card_unique_id = recipient.card_unique_id and l.revoked_at is null
+        on conflict do nothing;
+      end if;
+      queued_count := queued_count + 1;
+    end loop;
+  end loop;
+  return jsonb_build_object('queued', queued_count, 'campaignId', campaign_key);
+end;
+$$;
+revoke all on function public.queue_manual_customer_campaign(text, text, text, text) from public, anon;
+grant execute on function public.queue_manual_customer_campaign(text, text, text, text) to authenticated;
 
 notify pgrst, 'reload schema';

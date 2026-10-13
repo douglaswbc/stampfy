@@ -6,7 +6,7 @@ type ClaimedPushDelivery = {
   business_name: string;
   business_slug: string;
   interface_language: string;
-  event_type: 'visit_validated' | 'mission_completed' | 'reward_claimed' | 'return_reminder' | 'mission_reminder' | 'reward_expiring';
+  event_type: 'visit_validated' | 'mission_completed' | 'reward_claimed' | 'return_reminder' | 'mission_reminder' | 'reward_expiring' | 'manual_campaign';
   endpoint_url: string;
   p256dh_key: string;
   auth_secret: string;
@@ -150,7 +150,7 @@ const encryptPayload = async (delivery: ClaimedPushDelivery, payload: Record<str
 
 const notificationCopy = (delivery: ClaimedPushDelivery) => {
   const language = delivery.interface_language?.toLowerCase() || 'en';
-  if (delivery.event_type === 'return_reminder' || delivery.event_type === 'mission_reminder' || delivery.event_type === 'reward_expiring') {
+  if (delivery.event_type === 'return_reminder' || delivery.event_type === 'mission_reminder' || delivery.event_type === 'reward_expiring' || delivery.event_type === 'manual_campaign') {
     return {
       title: delivery.message_title || 'Stampfy',
       body: delivery.message_body || '',
