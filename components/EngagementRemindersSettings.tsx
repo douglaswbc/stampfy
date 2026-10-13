@@ -4,7 +4,7 @@ import { useLocale } from './LocaleProvider';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { supabase } from '../supabase';
+import { supabase } from '../lib/supabase';
 import {
   getCompanyEngagementConfiguration,
   saveCompanyEngagementConfiguration,
