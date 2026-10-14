@@ -24,7 +24,7 @@ Antes de publicar a primeira versão:
 - Configurar no Vercel `SUPABASE_URL` e `SUPABASE_ANON_KEY` para as funções públicas. A chave anon/public é suficiente porque as funções retornam somente conteúdo publicado e habilitado; nunca configurar a chave service role nestas rotas.
 - Para receber formulários, configurar `SUPABASE_SERVICE_ROLE_KEY` como variável **server-only** no Vercel, sem prefixo `VITE_`. `api/business-site-lead.ts` a usa somente no servidor para chamar uma RPC restrita; a chave não deve entrar no bundle do navegador nem em logs.
 - Aplicar também `supabase/legacy-patches/add_business_site_leads.sql`. O patch é aditivo e cria a caixa de entrada privada, limite anti-spam e RPCs do formulário.
-- Configurar `APP_ORIGIN` com a origem pública canônica, por exemplo `https://stampee.co`. Sem essa variável, as funções usam a origem da requisição recebida.
+- Configurar `APP_ORIGIN` com a origem pública canônica, por exemplo `https://fidelidade.exemplo.com.br`. Sem essa variável, as funções usam a origem da requisição recebida.
 - Configurar `SITE_ORIGIN` ou `VITE_APP_URL` no build para que o sitemap estático geral use o domínio correto. `robots.txt` referencia o sitemap geral e `/sites-sitemap.xml`.
 - Confirmar que as funções Vercel em `api/` e os rewrites de `/empresa/{slug}` e `/sites-sitemap.xml` estão ativos no deploy.
 

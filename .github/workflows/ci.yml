@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify:
+    name: Verificar tipos e build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Verificar tipos
+        run: npx tsc --noEmit
+
+      - name: Build
+        env:
+          # Valores fictícios: o build não acessa o Supabase.
+          VITE_APP_URL: https://example.com
+          VITE_APP_NAME: Stampfy
+          VITE_SUPABASE_URL: https://placeholder.supabase.co
+          VITE_SUPABASE_ANON_KEY: placeholder-anon-key
+        run: npm run build
+
+      - name: Conferir que nenhum segredo server-only foi para o bundle
+        run: |
+          if grep -rlE "service_role|sb_secret|VITE_SUPABASE_SERVICE_ROLE_KEY" dist/assets/ 2>/dev/null; then
+            echo "::error::Variável server-only encontrada no bundle do navegador"
+            exit 1
+          fi
+          echo "Nenhum segredo server-only encontrado no bundle."
+
+      - name: Conferir que os tokens de SEO foram resolvidos
+        run: |
+          if grep -q "__APP_URL__\|__APP_NAME__\|__SOCIAL_IMAGE__" dist/index.html; then
+            echo "::error::Tokens de SEO não substituídos em dist/index.html"
+            exit 1
+          fi
+          echo "Tokens de SEO corretamente resolvidos."
+
+      - name: Conferir que nenhum .env está versionado
+        run: |
+          if git ls-files | grep -E "(^|/)\.env($|\.)" | grep -v "^\.env\.example$"; then
+            echo "::error::Arquivo .env versionado no repositório"
+            exit 1
+          fi
+          echo "Nenhum arquivo .env versionado."

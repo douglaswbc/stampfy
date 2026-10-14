@@ -21,5 +21,5 @@ Disallow: /*/staff*
 Disallow: /*/scan/
 Disallow: /*/scan/*
 
-Sitemap: https://stampee.co/sitemap.xml
-Sitemap: https://stampee.co/sites-sitemap.xml
+Sitemap: http://localhost:3000/sitemap.xml
+Sitemap: http://localhost:3000/sites-sitemap.xml
