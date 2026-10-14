@@ -1,10 +1,18 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowUpRight, CheckCircle2, Eye, Globe2, History, Plus, Save, Send, Trash2, Undo2, Upload } from 'lucide-react';
+import { ArrowUpRight, CheckCircle2, ChevronDown, Eye, Globe2, History, Pencil, Plus, Save, Send, Trash2, Undo2, Upload } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useLocale } from './LocaleProvider';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { useAuth } from './AuthProvider';
@@ -186,7 +194,8 @@ export const BusinessSiteAdminPage: React.FC = () => {
   const [section, setSection] = useState<Section>('overview');
   const [site, setSite] = useState<Awaited<ReturnType<typeof fetchBusinessSiteDraft>>['data']>(null);
   const [draft, setDraft] = useState<BusinessSiteContent | null>(null);
-  const [newItem, setNewItem] = useState(emptyNewItem);
+  // Catálogo: um único modal atende criação e edição. `itemDialog.id === null` = criando.
+  const [itemDialog, setItemDialog] = useState<{ open: boolean; item: Omit<BusinessSiteItem, 'id'> & { id?: string } } | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -398,6 +407,14 @@ export const BusinessSiteAdminPage: React.FC = () => {
 
   const handlePreview = async () => {
     if (hasChanges && !(await persistDraft())) return;
+    // Recarrega o rascunho do zero: sem isso o preview usaria o estado local
+    // desatualizado (ex.: logo/hero recém-salvos não apareceriam).
+    const refreshed = await fetchBusinessSiteDraft();
+    if (refreshed.data) {
+      setSite(refreshed.data);
+      setDraft(refreshed.data.draftContent);
+    }
+    setError('');
     navigate('/site/preview');
   };
 
@@ -434,18 +451,65 @@ export const BusinessSiteAdminPage: React.FC = () => {
     setDraft({ ...draft, pages: [...draft.pages, page] });
   };
 
-  const handleAddItem = (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!draft || !newItem.name.trim()) return;
-    const slug = normalizeSlug(newItem.slug || newItem.name);
-    if (!slug || draft.items.some((item) => item.slug === slug)) {
+  const openCreateItem = () => {
+    setError('');
+    setItemDialog({ open: true, item: emptyNewItem() });
+  };
+
+  const openEditItem = (item: BusinessSiteItem) => {
+    setError('');
+    setItemDialog({ open: true, item: { ...item } });
+  };
+
+  const closeItemDialog = () => {
+    setItemDialog(null);
+    setError('');
+  };
+
+  const patchItemDialog = (changes: Partial<Omit<BusinessSiteItem, 'id'>>) => {
+    setItemDialog((current) => current ? { ...current, item: { ...current.item, ...changes } } : current);
+  };
+
+  const saveItemDialog = () => {
+    if (!draft || !itemDialog) return;
+    const values = itemDialog.item;
+    if (!values.name.trim()) {
+      setError(t('Name'));
+      return;
+    }
+    const slug = normalizeSlug(values.slug || values.name);
+    const editingId = values.id;
+    if (!slug || draft.items.some((item) => item.slug === slug && item.id !== editingId)) {
       setError(t('Choose a unique product or service URL.'));
       return;
     }
-    const item: BusinessSiteItem = { ...newItem, id: crypto.randomUUID(), slug };
-    setDraft({ ...draft, items: [...draft.items, item] });
-    setNewItem(emptyNewItem());
+    const nextItem: BusinessSiteItem = {
+      ...values,
+      id: editingId ?? crypto.randomUUID(),
+      name: values.name.trim(),
+      slug,
+      categorySlug: values.category ? normalizeSlug(values.category) : '',
+    };
+    setDraft({
+      ...draft,
+      items: editingId
+        ? draft.items.map((item) => item.id === editingId ? nextItem : item)
+        : [...draft.items, nextItem],
+    });
     setError('');
+    setItemDialog(null);
+  };
+
+  const removeItem = (id: string) => {
+    if (!draft) return;
+    setDraft({
+      ...draft,
+      items: draft.items.filter((entry) => entry.id !== id),
+      pages: draft.pages.map((page) => ({
+        ...page,
+        featuredItemIds: page.featuredItemIds.filter((itemId) => itemId !== id),
+      })),
+    });
   };
 
   if (loading) {
@@ -469,7 +533,7 @@ export const BusinessSiteAdminPage: React.FC = () => {
     { id: 'pages', label: 'Write the about page', section: 'pages', complete: Boolean(draft.pages.some((page) => page.kind === 'about' && page.body.trim())) },
     { id: 'catalog', label: 'Add a product or service', section: 'catalog', complete: draft.items.some((item) => item.enabled) },
     { id: 'seo', label: 'Review search details', section: 'seo', complete: Boolean(draft.seo.title.trim() && draft.seo.description.trim()) },
-    { id: 'publish', label: 'Publish your site', section: 'overview', complete: Boolean(site.publishedAt && !hasChanges) },
+    { id: 'publish', label: 'Publish your site', section: 'history', complete: Boolean(site.publishedAt && !hasChanges) },
   ];
   const completedSetupSteps = setupSteps.filter((step) => step.complete).length;
 
@@ -670,64 +734,133 @@ export const BusinessSiteAdminPage: React.FC = () => {
 
       {section === 'catalog' && (
         <div className="space-y-5">
-          <div><h2 className="text-xl font-semibold">{t('Products and services')}</h2><p className="text-sm text-muted-foreground">{t('This public directory is separate from loyalty rewards and does not take payments.')}</p></div>
-          <Card><CardContent className="space-y-4 p-4 sm:p-6">
-            <h3 className="font-semibold">{t('Add a product or service')}</h3>
-            <form className="space-y-4" onSubmit={handleAddItem}>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <div className="space-y-1.5"><Label>{t('Item type')}</Label><select className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" value={newItem.kind} onChange={(event) => setNewItem({ ...newItem, kind: event.target.value as BusinessSiteItem['kind'] })}><option value="service">{t('Service')}</option><option value="product">{t('Product')}</option></select></div>
-                <InputField label={t('Name')} value={newItem.name} onChange={(value) => setNewItem({ ...newItem, name: value, slug: normalizeSlug(value) })} required />
-                <InputField label={t('Category')} value={newItem.category} onChange={(value) => setNewItem({ ...newItem, category: value, categorySlug: normalizeSlug(value) })} />
-                <InputField label={t('URL slug')} value={newItem.slug} onChange={(value) => setNewItem({ ...newItem, slug: normalizeSlug(value) })} />
-                <InputField label={t('Price or price range (optional)')} value={newItem.priceLabel} onChange={(value) => setNewItem({ ...newItem, priceLabel: value })} />
-                <InputField label={t('Duration (optional)')} value={newItem.duration} onChange={(value) => setNewItem({ ...newItem, duration: value })} />
-                <SiteImageField label={t('Image URL')} ownerId={currentOwner?.id} value={newItem.imageUrl} onChange={(value) => setNewItem({ ...newItem, imageUrl: value })} />
-                <InputField label={t('Area served')} value={newItem.areaServed} onChange={(value) => setNewItem({ ...newItem, areaServed: value })} />
-                <InputField label={t('Button link')} value={newItem.ctaUrl} onChange={(value) => setNewItem({ ...newItem, ctaUrl: value })} placeholder="https:// or tel:" />
-              </div>
-              <InputField label={t('Short summary')} value={newItem.summary} onChange={(value) => setNewItem({ ...newItem, summary: value })} />
-              <TextAreaField label={t('Description')} value={newItem.description} onChange={(value) => setNewItem({ ...newItem, description: value })} />
-              <div className="grid gap-2 sm:grid-cols-3">
-                <ToggleField label={t('Show in the public directory')} checked={newItem.enabled} onChange={(value) => setNewItem({ ...newItem, enabled: value })} />
-                <ToggleField label={t('Feature on the homepage')} checked={newItem.featured} onChange={(value) => setNewItem({ ...newItem, featured: value })} />
-                <ToggleField label={t('Index this item')} checked={newItem.indexable} onChange={(value) => setNewItem({ ...newItem, indexable: value })} />
-              </div>
-              <Button type="submit"><Plus className="mr-2 h-4 w-4" />{t('Add to directory')}</Button>
-            </form>
-          </CardContent></Card>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-semibold">{t('Products and services')}</h2>
+              <p className="text-sm text-muted-foreground">{t('This public directory is separate from loyalty rewards and does not take payments.')}</p>
+            </div>
+            <Button type="button" onClick={openCreateItem}>
+              <Plus className="mr-2 h-4 w-4" />{t('Add a product or service')}
+            </Button>
+          </div>
 
           {draft.items.length === 0 ? (
-            <Card><CardContent className="p-6 text-center text-sm text-muted-foreground">{t('No products or services yet.')}</CardContent></Card>
-          ) : draft.items.map((item) => (
-            <Card key={item.id}><CardContent className="space-y-4 p-4 sm:p-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-2"><h3 className="truncate font-semibold">{item.name}</h3><Badge variant="outline">{t(item.kind === 'service' ? 'Service' : 'Product')}</Badge></div>
-                <Button type="button" variant="ghost" size="icon" aria-label={t('Delete item')} onClick={() => setDraft({ ...draft, items: draft.items.filter((entry) => entry.id !== item.id), pages: draft.pages.map((page) => ({ ...page, featuredItemIds: page.featuredItemIds.filter((id) => id !== item.id) })) })}><Trash2 className="h-4 w-4" /></Button>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <InputField label={t('Name')} value={item.name} onChange={(value) => updateItem(item.id, { name: value })} />
-                <InputField label={t('Category')} value={item.category} onChange={(value) => updateItem(item.id, { category: value, categorySlug: normalizeSlug(value) })} />
-                <InputField label={t('URL slug')} value={item.slug} onChange={(value) => updateItem(item.id, { slug: normalizeSlug(value) })} />
-                <InputField label={t('Price or price range (optional)')} value={item.priceLabel} onChange={(value) => updateItem(item.id, { priceLabel: value })} />
-                <InputField label={t('Duration (optional)')} value={item.duration} onChange={(value) => updateItem(item.id, { duration: value })} />
-                <SiteImageField label={t('Image URL')} ownerId={currentOwner?.id} value={item.imageUrl} onChange={(value) => updateItem(item.id, { imageUrl: value })} />
-                <InputField label={t('Area served')} value={item.areaServed} onChange={(value) => updateItem(item.id, { areaServed: value })} />
-                <InputField label={t('Button label')} value={item.ctaLabel} onChange={(value) => updateItem(item.id, { ctaLabel: value })} />
-                <InputField label={t('Button link')} value={item.ctaUrl} onChange={(value) => updateItem(item.id, { ctaUrl: value })} />
-                <InputField label={t('SEO title')} value={item.metaTitle} onChange={(value) => updateItem(item.id, { metaTitle: value })} />
-                <InputField label={t('SEO description')} value={item.metaDescription} onChange={(value) => updateItem(item.id, { metaDescription: value })} />
-              </div>
-              <InputField label={t('Short summary')} value={item.summary} onChange={(value) => updateItem(item.id, { summary: value })} />
-              <TextAreaField label={t('Description')} value={item.description} onChange={(value) => updateItem(item.id, { description: value })} />
-              <div className="grid gap-2 sm:grid-cols-3">
-                <ToggleField label={t('Show in the public directory')} checked={item.enabled} onChange={(value) => updateItem(item.id, { enabled: value })} />
-                <ToggleField label={t('Feature on the homepage')} checked={item.featured} onChange={(value) => updateItem(item.id, { featured: value })} />
-                <ToggleField label={t('Index this item')} checked={item.indexable} onChange={(value) => updateItem(item.id, { indexable: value })} />
-              </div>
-            </CardContent></Card>
-          ))}
+            <Card>
+              <CardContent className="space-y-3 p-8 text-center">
+                <p className="text-sm text-muted-foreground">{t('No products or services yet.')}</p>
+                <Button type="button" variant="outline" onClick={openCreateItem}>
+                  <Plus className="mr-2 h-4 w-4" />{t('Add a product or service')}
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <ul className="space-y-2">
+              {draft.items.map((item) => (
+                <li key={item.id}>
+                  <Card>
+                    <CardContent className="flex items-center gap-3 p-3 sm:p-4">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="truncate font-medium">{item.name}</span>
+                          <Badge variant="outline">{t(item.kind === 'service' ? 'Service' : 'Product')}</Badge>
+                          {item.featured && <Badge variant="secondary">{t('Feature on the homepage')}</Badge>}
+                          {!item.enabled && <Badge variant="outline">{t('Unpublished changes')}</Badge>}
+                        </div>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {[item.category, item.priceLabel, item.duration].filter(Boolean).join(' · ') || `/${item.kind}/${item.slug}`}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <Button type="button" variant="ghost" size="sm" onClick={() => openEditItem(item)}>
+                          <Pencil className="mr-2 h-4 w-4" />{t('Edit')}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`${t('Delete item')}: ${item.name}`}
+                          onClick={() => removeItem(item.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
+
+      <Dialog open={Boolean(itemDialog?.open)} onOpenChange={(open) => { if (!open) closeItemDialog(); }}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{itemDialog?.item.id ? t('Edit') : t('Add a product or service')}</DialogTitle>
+            <DialogDescription>{t('This public directory is separate from loyalty rewards and does not take payments.')}</DialogDescription>
+          </DialogHeader>
+          {itemDialog && (
+            <div className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="item-kind">{t('Item type')}</Label>
+                  <select
+                    id="item-kind"
+                    className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    value={itemDialog.item.kind}
+                    onChange={(event) => patchItemDialog({ kind: event.target.value as BusinessSiteItem['kind'] })}
+                  >
+                    <option value="service">{t('Service')}</option>
+                    <option value="product">{t('Product')}</option>
+                  </select>
+                </div>
+                <InputField
+                  label={t('Name')}
+                  value={itemDialog.item.name}
+                  onChange={(value) => patchItemDialog({ name: value })}
+                  required
+                />
+                <InputField label={t('Category')} value={itemDialog.item.category} onChange={(value) => patchItemDialog({ category: value })} />
+                <InputField label={t('URL slug')} value={itemDialog.item.slug} onChange={(value) => patchItemDialog({ slug: normalizeSlug(value) })} />
+                <InputField label={t('Price or price range (optional)')} value={itemDialog.item.priceLabel} onChange={(value) => patchItemDialog({ priceLabel: value })} />
+                <InputField label={t('Duration (optional)')} value={itemDialog.item.duration} onChange={(value) => patchItemDialog({ duration: value })} />
+                <InputField label={t('Area served')} value={itemDialog.item.areaServed} onChange={(value) => patchItemDialog({ areaServed: value })} />
+                <InputField label={t('Button label')} value={itemDialog.item.ctaLabel} onChange={(value) => patchItemDialog({ ctaLabel: value })} />
+                <InputField label={t('Button link')} value={itemDialog.item.ctaUrl} onChange={(value) => patchItemDialog({ ctaUrl: value })} placeholder="https:// or tel:" />
+              </div>
+              <SiteImageField
+                label={t('Image URL')}
+                ownerId={currentOwner?.id}
+                value={itemDialog.item.imageUrl}
+                onChange={(value) => patchItemDialog({ imageUrl: value })}
+              />
+              <InputField label={t('Short summary')} value={itemDialog.item.summary} onChange={(value) => patchItemDialog({ summary: value })} />
+              <TextAreaField label={t('Description')} value={itemDialog.item.description} onChange={(value) => patchItemDialog({ description: value })} />
+              <details className="rounded-lg border border-border/70 px-3 py-2">
+                <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-medium">
+                  <ChevronDown className="h-4 w-4" />
+                  {t('Search appearance')}
+                </summary>
+                <div className="mt-3 space-y-4">
+                  <InputField label={t('SEO title')} value={itemDialog.item.metaTitle} onChange={(value) => patchItemDialog({ metaTitle: value })} />
+                  <InputField label={t('SEO description')} value={itemDialog.item.metaDescription} onChange={(value) => patchItemDialog({ metaDescription: value })} />
+                </div>
+              </details>
+              <div className="grid gap-2 sm:grid-cols-3">
+                <ToggleField label={t('Show in the public directory')} checked={itemDialog.item.enabled} onChange={(value) => patchItemDialog({ enabled: value })} />
+                <ToggleField label={t('Feature on the homepage')} checked={itemDialog.item.featured} onChange={(value) => patchItemDialog({ featured: value })} />
+                <ToggleField label={t('Index this item')} checked={itemDialog.item.indexable} onChange={(value) => patchItemDialog({ indexable: value })} />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={closeItemDialog}>{t('Cancel')}</Button>
+            <Button type="button" onClick={saveItemDialog} disabled={!itemDialog?.item.name.trim()}>
+              {itemDialog?.item.id ? t('Save changes') : t('Add to directory')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {section === 'leads' && (
         <div className="space-y-4">

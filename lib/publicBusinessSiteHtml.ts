@@ -1,4 +1,5 @@
 import type { BusinessSiteContent, BusinessSiteItem, BusinessSitePage, PublicBusinessSite } from './businessSites';
+import { normalizeBusinessSiteContent } from './businessSites';
 
 const copy = {
   'pt-BR': {
@@ -336,14 +337,18 @@ export const renderPublicBusinessSiteHtml = (
   origin: string,
   options: { preview?: boolean; leadState?: string | null; basePath?: string; platformOrigin?: string } = {},
 ): { html: string; status: number; cacheTag: string } => {
-  const content = site.content;
-  const lang = content.seo.language || 'pt-BR';
+  // O conteúdo chega cru do banco/RPC e pode estar incompleto (site publicado antes de
+  // um campo existir, migration parcial, rascunho vazio). Normalizar aqui evita
+  // TypeError no meio do render, que virava 500 FUNCTION_INVOCATION_FAILED.
+  const content = normalizeBusinessSiteContent(site.content, site.businessName);
+  const lang = copy[content.seo.language as keyof typeof copy] ? content.seo.language : 'pt-BR';
   const labels = copy[lang];
+  const safeSite: PublicBusinessSite = { ...site, content };
   const resolved = resolvePage(content, route);
   const exists = resolved.kind !== 'missing' && (resolved.kind !== 'item' || Boolean(resolved.item));
   const selectedPage = resolved.page;
   const selectedItem = resolved.item;
-  const basePath = options.basePath === undefined ? `/empresa/${site.slug}` : options.basePath;
+  const basePath = options.basePath === undefined ? `/empresa/${safeSite.slug}` : options.basePath;
   const platformOrigin = options.platformOrigin || origin;
   const canonicalPath = sitePath(basePath, resolved.route);
   const canonical = `${origin}${canonicalPath}`;
@@ -360,10 +365,10 @@ export const renderPublicBusinessSiteHtml = (
   const leadNotice = resolved.kind === 'page' && resolved.page?.kind === 'contact' && options.leadState
     ? `<p class="form-notice" role="status" aria-live="polite">${options.leadState === 'success' ? labels.contactSuccess : options.leadState === 'rate-limited' ? labels.contactRateLimited : labels.contactError}</p>`
     : '';
-  const body = `${pageBody(site, resolved, origin, labels, basePath)}${leadNotice}`;
+  const body = `${pageBody(safeSite, resolved, origin, labels, basePath)}${leadNotice}`;
   const primaryColor = safeColor(content.branding.primaryColor, '#1d4ed8');
   const accentColor = safeColor(content.branding.accentColor, '#f59e0b');
-  const jsonLd = exists ? buildJsonLd(site, origin, canonical, title, description, resolved, basePath) : '';
+  const jsonLd = exists ? buildJsonLd(safeSite, origin, canonical, title, description, resolved, basePath) : '';
   const navPages = content.pages.filter((page) => page.enabled && page.showInNavigation);
   const dirLink = content.items.some((item) => item.enabled) ? `<a href="${sitePath(basePath, 'produtos-servicos')}">${labels.directory}</a>` : '';
   const nav = [`<a href="${sitePath(basePath)}">${labels.home}</a>`, dirLink, ...navPages.map((page) => `<a href="${escapeHtml(pagePath(site, page, basePath))}">${escapeHtml(page.title)}</a>`)].filter(Boolean).join('');
@@ -387,10 +392,10 @@ ${schema}
 </style>
 </head>
 <body>${options.preview ? `<div style="position:sticky;top:0;z-index:5;padding:10px 16px;background:#111827;color:white;text-align:center;font:600 13px/1.4 system-ui">PREVIEW — <a style="color:white" href="/site">${escapeHtml(lang === 'pt-BR' ? 'Voltar ao editor do site' : lang === 'es' ? 'Volver al editor del sitio' : 'Back to site editor')}</a></div>` : ''}<div class="site-shell">
-<header class="site-header"><div class="site-header__inner"><a class="brand" href="${sitePath(basePath)}">${logo ? `<img src="${escapeHtml(logo)}" alt="${escapeHtml(site.businessName)}">` : escapeHtml(site.businessName)}</a><nav class="site-nav" aria-label="${lang === 'pt-BR' ? 'Navegação principal' : lang === 'es' ? 'Navegación principal' : 'Main navigation'}">${nav}</nav></div></header>
-<main>${exists ? body : `<section class="section section--narrow not-found"><p class="eyebrow">${escapeHtml(site.businessName)}</p><h1>${labels.notFound}</h1><p>${labels.notFoundCopy}</p><a class="button button--primary" href="${sitePath(basePath)}">${labels.backHome}</a></section>`}</main>
-<footer class="site-footer"><div class="site-footer__inner"><span>© ${new Date().getUTCFullYear()} ${escapeHtml(site.businessName)}</span><nav class="site-footer__links" aria-label="${labels.privacy}">${content.pages.filter((page) => page.enabled && page.kind === 'privacy').map((page) => `<a href="${escapeHtml(pagePath(site, page, basePath))}">${escapeHtml(page.title || labels.privacy)}</a>`).join('')}<a href="${escapeHtml(platformOrigin)}">${escapeHtml('Stampfy')}</a></nav></div></footer>
+<header class="site-header"><div class="site-header__inner"><a class="brand" href="${sitePath(basePath)}">${logo ? `<img src="${escapeHtml(logo)}" alt="${escapeHtml(safeSite.businessName)}">` : escapeHtml(safeSite.businessName)}</a><nav class="site-nav" aria-label="${lang === 'pt-BR' ? 'Navegação principal' : lang === 'es' ? 'Navegación principal' : 'Main navigation'}">${nav}</nav></div></header>
+<main>${exists ? body : `<section class="section section--narrow not-found"><p class="eyebrow">${escapeHtml(safeSite.businessName)}</p><h1>${labels.notFound}</h1><p>${labels.notFoundCopy}</p><a class="button button--primary" href="${sitePath(basePath)}">${labels.backHome}</a></section>`}</main>
+<footer class="site-footer"><div class="site-footer__inner"><span>© ${new Date().getUTCFullYear()} ${escapeHtml(safeSite.businessName)}</span><nav class="site-footer__links" aria-label="${labels.privacy}">${content.pages.filter((page) => page.enabled && page.kind === 'privacy').map((page) => `<a href="${escapeHtml(pagePath(site, page, basePath))}">${escapeHtml(page.title || labels.privacy)}</a>`).join('')}<a href="${escapeHtml(platformOrigin)}">${escapeHtml('Stampfy')}</a></nav></div></footer>
 </div></body></html>`;
 
-  return { html, status: exists ? 200 : 404, cacheTag: `business-site-${site.slug}-${site.revision}` };
+  return { html, status: exists ? 200 : 404, cacheTag: `business-site-${safeSite.slug}-${safeSite.revision}` };
 };

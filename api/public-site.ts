@@ -84,6 +84,7 @@ export default {
       });
       return htmlResponse(rendered.html, rendered.status, { 'Cache-Control': 'no-store' });
     } catch {
+      console.error('[public-site] render failed', { slug, route, host });
       return htmlResponse(unavailableHtml('Site temporarily unavailable', 'Please try again in a few minutes.', siteOrigin), 503, { 'Cache-Control': 'no-store' });
     }
   },
