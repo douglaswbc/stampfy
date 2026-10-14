@@ -10,6 +10,7 @@ import {
   Sparkles,
   Ticket,
   WalletCards,
+  type LucideIcon,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { LocalizedTree } from "./LocalizedTree";
@@ -37,13 +38,13 @@ interface AccentCard {
   title: string;
   copy: string;
   className: string;
-  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  icon: LucideIcon;
 }
 
 interface ShowcasePill {
   label: string;
   className: string;
-  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  icon: LucideIcon;
 }
 
 interface UtilityCard {
@@ -66,7 +67,7 @@ interface ThemeConfig {
   accent: AccentCard;
   utility: UtilityCard;
   pills: ShowcasePill[];
-  actions: React.ComponentType<{ className?: string; strokeWidth?: number }>[];
+  actions: LucideIcon[];
 }
 
 const MODE_CONFIG: Record<AuthMode, ThemeConfig> = {

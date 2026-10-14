@@ -356,7 +356,9 @@ const maySend = async (notification: ClaimedNotification) => restFetch('rpc/auth
   template_language_input: notification.template_language,
 }) as Promise<boolean>;
 
-const processNotification = async (notification: ClaimedNotification) => {
+type NotificationOutcome = 'sent' | 'failed' | 'skipped' | 'retry';
+
+const processNotification = async (notification: ClaimedNotification): Promise<{ outcome: NotificationOutcome }> => {
   try {
     if (!await maySend(notification)) {
       await finish(notification.outbox_id, 'skipped', 'consent_or_mapping_revoked');
@@ -449,7 +451,7 @@ export default {
       }
       const claimed = await restFetch('rpc/claim_communication_notifications', 'POST') as ClaimedNotification[] | null;
       const notifications = Array.isArray(claimed) ? claimed : [];
-      const results = [];
+      const results: { outcome: NotificationOutcome }[] = [];
       for (const notification of notifications) results.push(await processNotification(notification));
       return json({
         claimed: notifications.length,

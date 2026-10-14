@@ -93,7 +93,7 @@ const editableTemplate = (template: ZernioTemplate) => {
   const bodyVariables = [...body.text.matchAll(/\{\{([^{}]+)\}\}/g)];
   if (bodyVariables.some((match) => !/^[a-z][a-z0-9_]*$/.test(match[1])) || body.text.replace(/\{\{[^{}]+\}\}/g, '').match(/\{\{|\}\}/)) return null;
   const buttonComponent = components.find((component) => String(component.type || '').toUpperCase() === 'BUTTONS');
-  const buttons = Array.isArray(buttonComponent?.buttons) ? buttonComponent.buttons.flatMap((value) => {
+  const buttons: TemplateButtonDraft[] = Array.isArray(buttonComponent?.buttons) ? buttonComponent.buttons.flatMap((value): TemplateButtonDraft | TemplateButtonDraft[] => {
     if (!value || typeof value !== 'object') return [];
     const button = value as Record<string, unknown>;
     const type = String(button.type || '').toUpperCase() as TemplateButtonType;
@@ -104,7 +104,7 @@ const editableTemplate = (template: ZernioTemplate) => {
     return [{ type, text }];
   }) : [];
   if (buttonComponent && (!Array.isArray(buttonComponent.buttons) || buttons.length !== buttonComponent.buttons.length || buttons.length > 3)) return null;
-  return { body: body.text, buttons } as { body: string; buttons: TemplateButtonDraft[] };
+  return { body: body.text, buttons };
 };
 
 const insertVariable = (

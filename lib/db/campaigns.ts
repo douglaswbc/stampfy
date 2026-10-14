@@ -15,9 +15,9 @@ interface CampaignRow {
   show_logo: boolean;
   title_size: string | null;
   icon_key: string;
-  colors: Record<string, string>;
+  colors: StoredTemplate['colors'];
   total_stamps: number;
-  social: Record<string, string> | null;
+  social: StoredTemplate['social'];
 }
 
 export function rowToStoredTemplate(row: CampaignRow): StoredTemplate {
@@ -34,9 +34,9 @@ export function rowToStoredTemplate(row: CampaignRow): StoredTemplate {
     showLogo: row.show_logo,
     titleSize: row.title_size ?? undefined,
     iconKey: row.icon_key,
-    colors: row.colors as StoredTemplate['colors'],
+    colors: row.colors,
     totalStamps: row.total_stamps,
-    social: row.social as StoredTemplate['social'],
+    social: row.social,
   };
 }
 

@@ -1,5 +1,11 @@
 import { supabase } from '../supabase';
-import type { CustomerLoyaltyPoints, LoyaltyPointLevel } from '../../types';
+import type {
+  CustomerLoyaltyPoints,
+  LoyaltyBadge,
+  LoyaltyPointEntryType,
+  LoyaltyPointHistoryEntry,
+  LoyaltyPointLevel,
+} from '../../types';
 
 export interface LoyaltyPointsConfiguration {
   isEnabled: boolean;
@@ -16,6 +22,24 @@ export interface LoyaltyPointsCustomer {
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
   value && typeof value === 'object' ? value as Record<string, unknown> : null;
+
+const LOYALTY_POINT_ENTRY_TYPES: readonly LoyaltyPointEntryType[] = [
+  'visit',
+  'visit_reversal',
+  'manual_adjustment',
+  'reward_redemption',
+  'reward_refund',
+  'welcome_bonus',
+  'referral_reward',
+];
+
+const LOYALTY_BADGE_KEYS: readonly LoyaltyBadge['badgeKey'][] = ['first_visit', 'mission_completion'];
+
+const isLoyaltyPointEntryType = (value: unknown): value is LoyaltyPointEntryType =>
+  LOYALTY_POINT_ENTRY_TYPES.includes(value as LoyaltyPointEntryType);
+
+const isLoyaltyBadgeKey = (value: unknown): value is LoyaltyBadge['badgeKey'] =>
+  LOYALTY_BADGE_KEYS.includes(value as LoyaltyBadge['badgeKey']);
 
 const parseLevel = (value: unknown): LoyaltyPointLevel | null => {
   const row = asRecord(value);
@@ -116,22 +140,18 @@ export function parseCustomerLoyaltyPoints(value: unknown): CustomerLoyaltyPoint
   if (!row) return null;
   const currentLevel = row.currentLevel === null ? null : parseLevel(row.currentLevel);
   const nextLevel = row.nextLevel === null ? null : parseLevel(row.nextLevel);
-  const history = Array.isArray(row.history)
+  const history: LoyaltyPointHistoryEntry[] = Array.isArray(row.history)
     ? row.history.flatMap(value => {
       const entry = asRecord(value);
       if (!entry || typeof entry.description !== 'string' || typeof entry.createdAt !== 'string') return [];
-      const entryType = entry.entryType === 'visit_reversal' || entry.entryType === 'manual_adjustment'
-        || entry.entryType === 'reward_redemption' || entry.entryType === 'reward_refund'
-        || entry.entryType === 'welcome_bonus' || entry.entryType === 'referral_reward'
-        ? entry.entryType
-        : 'visit';
+      const entryType: LoyaltyPointEntryType = isLoyaltyPointEntryType(entry.entryType) ? entry.entryType : 'visit';
       return [{ entryType, pointsDelta: Number(entry.pointsDelta) || 0, description: entry.description, createdAt: entry.createdAt }];
     })
     : [];
-  const badges = Array.isArray(row.badges)
+  const badges: LoyaltyBadge[] = Array.isArray(row.badges)
     ? row.badges.flatMap(value => {
       const badge = asRecord(value);
-      return badge && (badge.badgeKey === 'first_visit' || badge.badgeKey === 'mission_completion') && typeof badge.earnedAt === 'string'
+      return badge && isLoyaltyBadgeKey(badge.badgeKey) && typeof badge.earnedAt === 'string'
         ? [{ badgeKey: badge.badgeKey, earnedAt: badge.earnedAt }]
         : [];
     })

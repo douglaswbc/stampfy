@@ -34,7 +34,10 @@ const copy = {
     contactSuccess: 'Message sent. The business may contact you using the details provided.', contactRateLimited: 'Too many messages in a short time. Wait a few minutes and try again.',
     contactError: 'The message could not be sent. Check the details and try again.',
   },
-} as const;
+};
+
+// All locales share the same label keys; `en` is the reference shape.
+type SiteLabels = { [K in keyof typeof copy['en']]: string };
 
 const escapeHtml = (value: unknown): string => String(value ?? '').replace(/[&<>"']/g, (character) => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -84,7 +87,7 @@ const renderImage = (url: string, alt: string, base: string, className: string, 
   return `<img class="${className}" src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" ${eager ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async">`;
 };
 
-const renderItemCard = (site: PublicBusinessSite, item: BusinessSiteItem, base: string, labels: typeof copy['en'], basePath = `/empresa/${site.slug}`) => `
+const renderItemCard = (site: PublicBusinessSite, item: BusinessSiteItem, base: string, labels: SiteLabels, basePath = `/empresa/${site.slug}`) => `
   <article class="item-card">
     <a class="item-card__image-link" href="${escapeHtml(itemPath(site, item, basePath))}" aria-label="${escapeHtml(item.name)}">
       ${renderImage(item.imageUrl, item.name, base, 'item-card__image') || '<span class="item-card__image item-card__placeholder" aria-hidden="true"></span>'}
@@ -98,10 +101,10 @@ const renderItemCard = (site: PublicBusinessSite, item: BusinessSiteItem, base: 
     </div>
   </article>`;
 
-const renderDirectory = (site: PublicBusinessSite, base: string, labels: typeof copy['en'], items = site.content.items.filter((item) => item.enabled), basePath = `/empresa/${site.slug}`) => `
+const renderDirectory = (site: PublicBusinessSite, base: string, labels: SiteLabels, items = site.content.items.filter((item) => item.enabled), basePath = `/empresa/${site.slug}`) => `
   <div class="item-grid">${items.map((item) => renderItemCard(site, item, base, labels, basePath)).join('')}</div>`;
 
-const renderContact = (site: PublicBusinessSite, labels: typeof copy['en']) => {
+const renderContact = (site: PublicBusinessSite, labels: SiteLabels) => {
   const contact = site.content.contact;
   const address = [contact.address, contact.city, contact.region, contact.postalCode, contact.country].filter(Boolean).join(', ');
   const whatsappDigits = contact.whatsapp.replace(/\D/g, '');
@@ -122,7 +125,7 @@ const renderContact = (site: PublicBusinessSite, labels: typeof copy['en']) => {
   </div>`;
 };
 
-const renderContactForm = (site: PublicBusinessSite, labels: typeof copy['en'], basePath = `/empresa/${site.slug}`) => {
+const renderContactForm = (site: PublicBusinessSite, labels: SiteLabels, basePath = `/empresa/${site.slug}`) => {
   const privacyPage = site.content.pages.find((page) => page.kind === 'privacy' && page.enabled);
   const privacyLink = privacyPage
     ? ` <a href="${escapeHtml(pagePath(site, privacyPage, basePath))}">${labels.privacy}</a>`
@@ -270,7 +273,7 @@ const buildJsonLd = (
   return JSON.stringify({ '@context': 'https://schema.org', '@graph': graph }).replace(/</g, '\\u003c');
 };
 
-const pageBody = (site: PublicBusinessSite, resolved: ReturnType<typeof resolvePage>, origin: string, labels: typeof copy['en'], basePath: string) => {
+const pageBody = (site: PublicBusinessSite, resolved: ReturnType<typeof resolvePage>, origin: string, labels: SiteLabels, basePath: string) => {
   const { content } = site;
   if (resolved.kind === 'home') {
     const featured = content.items.filter((item) => item.enabled && item.featured).slice(0, 6);

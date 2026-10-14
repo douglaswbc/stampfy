@@ -1,13 +1,12 @@
 import React from 'react';
-import { LucideIcon } from 'lucide-react';
-import { ThemeColors } from '../types';
+import { type IconComponent, type ThemeColors } from '../types';
 import { cn } from '../lib/utils';
 
 interface StampSlotProps {
   active: boolean;
   onClick: () => void;
   index: number;
-  icon: LucideIcon;
+  icon: IconComponent;
   colors: ThemeColors;
   className?: string;
   sizeClassName?: string;

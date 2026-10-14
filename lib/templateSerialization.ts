@@ -10,16 +10,16 @@ export const toStoredTemplate = (template: Template): StoredTemplate => {
   return { ...rest, isEnabled: rest.isEnabled ?? true, iconKey };
 };
 
-const normalizeHex = (value?: string, fallback?: string) => {
+const normalizeHex = (value: string | undefined, fallback: string): string => {
   if (!value) return fallback;
   const hex = extractHex(value);
   if (hex) return hex;
   if (value.includes("white")) return "#ffffff";
   if (value.includes("black")) return "#000000";
-  return fallback ?? value;
+  return value;
 };
 
-const normalizeColors = (colors: ThemeColors) => {
+const normalizeColors = (colors: ThemeColors): ThemeColors => {
   const textHex = normalizeHex(colors.text, "#111111");
   return {
     background: normalizeHex(colors.background, "#ffffff"),

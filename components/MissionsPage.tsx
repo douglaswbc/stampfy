@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, Clock3, Gift, Pause, Pencil, Play, Plus, RotateCcw, Target, Users, ChevronUp } from 'lucide-react';
+import { CheckCircle2, Clock3, Gift, Pause, Pencil, Play, Plus, RotateCcw, Target, Users, ChevronUp, type LucideIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { LoyaltyMission, LoyaltyMissionType, LoyaltyReward, Template } from '../types';
 import { createMission, fetchOwnerMissions, MissionInput, setMissionActive, updateMission } from '../lib/db/missions';
@@ -424,7 +424,7 @@ export const MissionsPage: React.FC<MissionsPageProps> = ({ campaigns }) => {
   );
 };
 
-const Summary: React.FC<{ icon: React.ComponentType<{ size?: number; className?: string }>; label: string; value: number }> = ({ icon: Icon, label, value }) => (
+const Summary: React.FC<{ icon: LucideIcon; label: string; value: number }> = ({ icon: Icon, label, value }) => (
   <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-subtle">
     <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
       <span>{label}</span>

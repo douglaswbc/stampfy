@@ -113,7 +113,7 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
   };
 
   const handleMissionCardUpdate = (cardId: string, update: {
-    card: Pick<IssuedCard, 'stamps' | 'status' | 'completedDate' | 'lastVisit'>;
+    card: Partial<Pick<IssuedCard, 'stamps' | 'status' | 'completedDate' | 'lastVisit'>>;
     transaction: Transaction;
   }) => {
     const matchingCustomer = customers.find(customer => customer.cards.some(card => card.id === cardId));

@@ -25,7 +25,7 @@ interface KioskModeProps {
   actorRole: 'owner' | 'staff';
   onScanRequest?: () => void;
   onMissionCardUpdate?: (cardId: string, update: {
-    card: Pick<IssuedCard, 'stamps' | 'status' | 'completedDate' | 'lastVisit'>;
+    card: Partial<Pick<IssuedCard, 'stamps' | 'status' | 'completedDate' | 'lastVisit'>>;
     transaction: Transaction;
   }) => void;
   mutationBusy?: boolean;
