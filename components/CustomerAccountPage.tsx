@@ -17,6 +17,7 @@ import {
   unlinkCustomerPortalBusiness,
 } from '../lib/db/customerPortal';
 import { setCustomerPortalEngagementPreference, type EngagementChannel } from '../lib/db/customerEngagement';
+import { APP_ORIGIN } from '../lib/siteConfig';
 
 const SERVICE_UNAVAILABLE_MESSAGE = 'Service is temporarily unavailable. Please try again later.';
 
@@ -306,7 +307,7 @@ const CustomerAccountPage: React.FC = () => {
           </div>
           <form onSubmit={linkCard} className="border-t border-border pt-4 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
             <div className="flex items-start gap-3"><div className="mt-0.5 rounded-xl bg-primary/10 p-2 text-primary"><Plus size={18} /></div><div><h2 className="font-semibold text-foreground">{t('Add a card with its link')}</h2><p className="mt-1 text-sm leading-5 text-muted-foreground">{t('Paste the full card link you received from the business.')}</p></div></div>
-            <div className="mt-3 flex flex-col gap-2 sm:flex-row"><Input value={cardReference} onChange={event => setCardReference(event.target.value)} placeholder="https://stampfy.com/business/card-id" aria-label={t('Full public card link')} className="min-w-0" /><Button type="submit" disabled={requestBusy || !cardReference.trim()} className="gap-2"><Plus size={15} />{t('Link card')}</Button></div>
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row"><Input value={cardReference} onChange={event => setCardReference(event.target.value)} placeholder={`${APP_ORIGIN}/business/card-id`} aria-label={t('Full public card link')} className="min-w-0" /><Button type="submit" disabled={requestBusy || !cardReference.trim()} className="gap-2"><Plus size={15} />{t('Link card')}</Button></div>
           </form>
         </section>
 

@@ -129,12 +129,12 @@ const normalizeDomain = (input: unknown) => {
     throw new ApiFailure('Enter a valid root domain, such as example.com.');
   }
   if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.vercel.app')) {
-    throw new ApiFailure('Use a domain owned by your business, not a Stampfy or Vercel domain.');
+    throw new ApiFailure('Use a domain owned by your business, not a platform or Vercel domain.');
   }
-  const appUrl = env('VITE_APP_URL') || env('APP_ORIGIN') || 'https://stampee.co';
+  const appUrl = env('VITE_APP_URL') || env('APP_ORIGIN') || '';
   const businessSiteDomain = getBusinessSiteDomain(appUrl);
   if (host === businessSiteDomain || host.endsWith(`.${businessSiteDomain}`)) {
-    throw new ApiFailure('The Stampfy platform domain cannot be assigned to a business site.');
+    throw new ApiFailure('The platform domain cannot be assigned to a business site.');
   }
   return { apexDomain: host, primaryDomain: `www.${host}` };
 };

@@ -3,7 +3,7 @@ import { TIER_LIMITS, User } from "../types";
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
 import { fetchProfile, fetchProfileDetailed, fetchStaffAccounts, updateProfile as dbUpdateProfile } from "../lib/db/profiles";
 import { normalizeSlug } from "../lib/slug";
-import { buildAppUrl, DEMO_WORKSPACE_ENABLED } from "../lib/siteConfig";
+import { buildAppUrl, DEMO_WORKSPACE_ENABLED, SALES_EMAIL, SUPPORT_EMAIL } from "../lib/siteConfig";
 import { getBrowserTimeZone } from "../lib/timezones";
 
 type AuthUserLike = {
@@ -396,7 +396,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw new Error("Demo workspace is currently unavailable.");
     }
     if (!isSupabaseConfigured) return;
-    const demoEmail = "demo@stampee.co";
+    const demoEmail = import.meta.env.VITE_DEMO_EMAIL?.trim() || "demo@stampfy.local";
     const demoPassword = "demo1234";
     const { error } = await supabase.auth.signInWithPassword({
       email: demoEmail,
@@ -430,9 +430,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     const staffLimit = TIER_LIMITS[currentOwner.tier].staff;
     if (staffAccounts.length >= staffLimit) {
+      const contact = SALES_EMAIL || SUPPORT_EMAIL;
       return {
         ok: false,
-        error: `Free beta access allows only ${staffLimit} staff account${staffLimit === 1 ? "" : "s"}. Contact hello@stampee.co if you need higher limits.`,
+        error: contact
+          ? `Free beta access allows only ${staffLimit} staff account${staffLimit === 1 ? "" : "s"}. Contact ${contact} if you need higher limits.`
+          : `Free beta access allows only ${staffLimit} staff account${staffLimit === 1 ? "" : "s"}.`,
       };
     }
 

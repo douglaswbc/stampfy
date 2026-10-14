@@ -29,3 +29,18 @@ supabase/.temp/
 *.sln
 *.sw?
 .vercel
+
+# AI/editor assistant local configuration
+opencode.json
+.claude/
+.cursor/
+.aider*
+AGENTS.md
+
+# Internal planning documents (not part of the public project)
+TASK.md
+
+# Build output and prerender artifacts
+dist
+.vercel
+.cache

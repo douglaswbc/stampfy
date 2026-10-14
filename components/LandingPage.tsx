@@ -6,6 +6,16 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./
 import { useAuth } from "./AuthProvider";
 import { trackEvent } from "../lib/analytics";
 import { CookiePreferencesBanner } from "./CookiePreferencesBanner";
+import { APP_ORIGIN } from "../lib/siteConfig";
+
+/** Short, human-readable host used in the illustrative browser mockups. */
+const DISPLAY_HOST = (() => {
+  try {
+    return new URL(APP_ORIGIN).host;
+  } catch {
+    return "localhost:3000";
+  }
+})();
 
 // ── Hooks ─────────────────────────────────────────────────────────────────────
 
@@ -131,7 +141,7 @@ const AnalyticsMockup: React.FC = () => (
       <div className="h-3 w-3 rounded-full bg-[#febc2e]" />
       <div className="h-3 w-3 rounded-full bg-[#28c840]" />
       <div className="ml-3 flex-1 rounded-md bg-white/80 px-3 py-1">
-        <p className="text-[9px] text-[#6e6e73]">app.stampee.co/analytics</p>
+        <p className="text-[9px] text-[#6e6e73]">{DISPLAY_HOST}/analytics</p>
       </div>
     </div>
     <div className="flex bg-[#f8f8f8]">
@@ -199,7 +209,7 @@ const CustomersMockup: React.FC = () => {
         <div className="h-3 w-3 rounded-full bg-[#febc2e]" />
         <div className="h-3 w-3 rounded-full bg-[#28c840]" />
         <div className="ml-3 flex-1 rounded-md bg-white/80 px-3 py-1">
-          <p className="text-[9px] text-[#6e6e73]">app.stampee.co/customers</p>
+          <p className="text-[9px] text-[#6e6e73]">{DISPLAY_HOST}/customers</p>
         </div>
       </div>
       <div className="flex bg-[#f8f8f8]">

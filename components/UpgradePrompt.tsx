@@ -10,7 +10,7 @@ import {
 } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { TIER_LIMITS } from "../types";
-import { SALES_EMAIL } from "../lib/siteConfig";
+import { SALES_EMAIL, SUPPORT_EMAIL } from "../lib/siteConfig";
 
 interface UpgradePromptProps {
   open: boolean;
@@ -40,7 +40,7 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
 }) => {
   const limits = TIER_LIMITS.free;
   const subject = encodeURIComponent(buildSubject(reason));
-  const mailtoHref = `mailto:${SALES_EMAIL}?subject=${subject}`;
+  const mailtoHref = `mailto:${SALES_EMAIL || SUPPORT_EMAIL}?subject=${subject}`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -109,7 +109,7 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
           <Button asChild className="h-12 w-full rounded-full text-base font-semibold">
             <a href={mailtoHref}>
               <Mail className="mr-2 h-4 w-4" />
-              Contact hello@stampee.co
+              {SALES_EMAIL || SUPPORT_EMAIL || "Contact us"}
             </a>
           </Button>
           <Button

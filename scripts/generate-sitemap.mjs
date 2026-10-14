@@ -1,9 +1,9 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { articles } from "../data/articles.data.js";
+import { readSeoConfig } from "./seo-config.mjs";
 
-const configuredOrigin = process.env.VITE_APP_URL?.trim() || process.env.SITE_ORIGIN?.trim() || "https://stampee.co";
-const SITE_ORIGIN = new URL(configuredOrigin).origin;
+const SITE_ORIGIN = new URL(readSeoConfig().appUrl).origin;
 const OUTPUT_PATH = resolve(process.cwd(), "public", "sitemap.xml");
 const ROBOTS_PATH = resolve(process.cwd(), "public", "robots.txt");
 

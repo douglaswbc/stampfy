@@ -1,12 +1,13 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { APP_NAME, SUPPORT_EMAIL } from "../lib/siteConfig";
 
 export const PublicFooter: React.FC = () => {
   return (
     <footer className="border-t border-white/[0.07] bg-[#1d1d1f] px-6 py-8">
       <div className="mx-auto flex max-w-[88rem] flex-col items-center gap-3 sm:flex-row sm:justify-between">
         <Link to="/" className="inline-flex items-center">
-          <img src="/stampfy.svg?v=2" alt="Stampfy" className="h-7 w-auto opacity-35 invert" />
+          <img src="/stampfy.svg?v=2" alt={APP_NAME} className="h-7 w-auto opacity-35 invert" />
         </Link>
         <div className="flex flex-col items-center gap-3 sm:flex-row sm:gap-6">
           <Link
@@ -39,13 +40,17 @@ export const PublicFooter: React.FC = () => {
           >
             Terms
           </Link>
-          <a
-            href="mailto:hello@stampee.co"
-            className="text-xs font-medium text-white/55 transition-colors hover:text-white"
-          >
-            hello@stampee.co
-          </a>
-          <p className="text-xs text-white/25">© {new Date().getFullYear()} Stampfy. All rights reserved.</p>
+          {SUPPORT_EMAIL && (
+            <a
+              href={`mailto:${SUPPORT_EMAIL}`}
+              className="text-xs font-medium text-white/55 transition-colors hover:text-white"
+            >
+              {SUPPORT_EMAIL}
+            </a>
+          )}
+          <p className="text-xs text-white/25">
+            © {new Date().getFullYear()} {APP_NAME}. All rights reserved.
+          </p>
         </div>
       </div>
     </footer>

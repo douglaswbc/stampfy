@@ -9,5 +9,6 @@ process.stdout.write([
   `VITE_WEB_PUSH_PUBLIC_KEY=${toBase64Url(publicKey)}`,
   `WEB_PUSH_PUBLIC_KEY=${toBase64Url(publicKey)}`,
   `WEB_PUSH_PRIVATE_KEY=${toBase64Url(privateKey)}`,
-  'WEB_PUSH_SUBJECT=mailto:support@stampfy.com',
+  '# Replace with your own contact address, e.g. mailto:voce@suaempresa.com.br',
+  'WEB_PUSH_SUBJECT=mailto:admin@localhost',
 ].join('\n') + '\n');

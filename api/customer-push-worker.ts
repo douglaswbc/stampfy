@@ -106,7 +106,7 @@ const makeVapidToken = async (endpoint: URL) => {
   const key = await crypto.subtle.importKey('jwk', {
     kty: 'EC', crv: 'P-256', x, y, d: encodeBase64Url(privateKey), ext: true, key_ops: ['sign'],
   }, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
-  const subject = process.env.WEB_PUSH_SUBJECT?.trim() || 'mailto:support@stampfy.com';
+  const subject = process.env.WEB_PUSH_SUBJECT?.trim() || 'mailto:admin@localhost';
   const header = encodeBase64Url(JSON.stringify({ typ: 'JWT', alg: 'ES256' }));
   const payload = encodeBase64Url(JSON.stringify({
     aud: endpoint.origin,

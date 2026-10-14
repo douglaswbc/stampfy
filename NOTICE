@@ -1,0 +1,55 @@
+# Credits and Attribution
+
+## Original project
+
+**Stampfy** is a fork and enhanced version of **[Stampee](https://github.com/danlim26/stampee)**,
+created by **Danilo Lim**. The original project is licensed under the
+[MIT License](https://opensource.org/licenses/MIT), and its copyright notice is
+preserved in this repository's [`LICENSE`](LICENSE) file.
+
+We are grateful to Danilo Lim for the original work, which provided the
+foundation for this project: the core stamp-card model, campaigns, customer
+issuance, the owner/staff authentication flow, and the public card pages.
+
+## What this fork adds
+
+This fork extends the original with a substantially expanded feature set and a
+multi-tenant SaaS architecture. Highlights of the enhancements:
+
+- **Multi-tenant platform** — tenant isolation by `owner_id`, a platform
+  administrator console, and tenant suspension/restoration RPCs.
+- **Loyalty missions** — server-derived mission progress with idempotent,
+  auditable reward grants, respecting the business time zone.
+- **Points, levels and badges** — an immutable points ledger with idempotency
+  keys, configurable levels, audited owner adjustments, and milestone badges.
+- **Rewards catalog and coupons** — reward offers with stock and eligibility
+  rules, expiring unique redemption codes, staff validation, and refunds.
+- **Institutional website module** — a per-business public website with an
+  assisted editor, asset uploads, product/service directory, SEO basics,
+  publication history, and lead capture.
+- **Custom business domains** — per-business domain connection via the Vercel
+  API, with DNS verification and wildcard subdomain fallback.
+- **Customer portal** — an optional cross-business customer account that
+  aggregates cards, points, missions and redemptions via secure email links.
+- **Communications** — WhatsApp templates through Zernio, with an idempotent
+  outbox, consent revalidation, and server-side workers.
+- **PWA and Web Push** — installable PWA with an optional, consent-based
+  notification subscription tied to the customer's card.
+- **Engagement reminders** — configurable reengagement triggers with
+  per-tenant rules, quiet hours, deduplication and suppression.
+- **TypeScript hardening** — stricter compiler configuration and expanded type
+  definitions across the data layer.
+
+All original functionality from the upstream project remains available.
+
+## Name and trademark
+
+"Stampfy" refers here to this open-source project and its repository. The
+MIT License grants copyright and usage rights; it does **not** grant trademark
+rights. If you deploy this software for your own business or resell it as an
+implementation service, you are free to rename and rebrand it — see
+[`docs/white-label.md`](docs/white-label.md).
+
+## License
+
+MIT — see [`LICENSE`](LICENSE).
